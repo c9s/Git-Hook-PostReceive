@@ -6,6 +6,8 @@ use DateTime::Format::DateParse;
 use Cwd;
 use File::Basename;
 
+our $VERSION = '0.01';
+
 method read_stdin ($line) {
     chomp $line;
     my @args = split /\s+/, $line;
