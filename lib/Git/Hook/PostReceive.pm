@@ -126,6 +126,30 @@ Git::Hook::PostReceive parses git commit information in post-receive hook script
 all you need to do is pass the stdin string to Git::Hook::PostReceive, 
 then it returns the commit payload .
 
+=head1 INSTALLATION
+
+Git::Hook::PostReceive installation is straightforward. If your CPAN shell is set up,
+you should just be able to do
+
+    % cpan Git::Hook::PostReceive
+
+Download it, unpack it, then build it as per the usual:
+
+    % perl Makefile.PL
+    % make && make test
+
+Then install it:
+
+    % make install
+
+=head1 DOCUMENTATION
+
+Git::Hook::PostReceive documentation is available as in POD. So you can do:
+
+    % perldoc Git::Hook::PostReceive
+
+to read the documentation online with your favorite pager.
+
 =head1 AUTHOR
 
 Yo-An Lin E<lt>cornelius.howl {at} gmail.comE<gt>
