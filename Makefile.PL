@@ -4,7 +4,12 @@ all_from 'lib/Git/Hook/PostReceive.pm';
 
 readme_markdown_from_pod 'lib/Git/Hook/PostReceive.pm';
 
-# requires '';
+requires 'Moose';
+requires 'methods';
+requires 'File::Basename';
+requires 'invoker';
+requires 'Cwd';
+requires 'DateTime::Format::DateParse';
 
 tests 't/*.t';
 # author_tests 'xt';
