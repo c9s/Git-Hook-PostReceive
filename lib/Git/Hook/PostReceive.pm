@@ -1,6 +1,5 @@
 package Git::Hook::PostReceive;
 use v5.12;
-use Moose;
 use DateTime::Format::DateParse;
 use Cwd;
 use File::Basename;
