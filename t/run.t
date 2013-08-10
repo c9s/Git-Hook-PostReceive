@@ -17,20 +17,23 @@ my @commands = <DATA>;
 foreach (@commands) {
     system($_) && break;
 }
-my $after = `git log --format='%H' -1`;
-chomp $after;
+
+my ($second,$first) = split "\n", `git log --format='%H'`;
 
 my $hook = Git::Hook::PostReceive->new;
 
-my $payload = $hook->run('0' x 40, $after, 'master');
+my $payload = $hook->run('0' x 40, $second, 'master');
 
-is $payload->{after}, $after, 'after';
+is $payload->{after}, $second, 'after';
 is scalar @{$payload->{commits}}, 2, 'number of commits';
 
-is_deeply $payload->{commits}->[0]->{author},
-    { email => 'a@li.ce', name => 'Alice' }, 'author';
-
-is $payload->{commits}->[0]->{timestamp}, '2013-07-30T08:20:24+02:00', 'timestamp';
+is_deeply $payload->{commits}->[0],
+    {
+        timestamp => '2013-07-30T08:20:24+02:00',
+        author => { email => 'a@li.ce', name => 'Alice' },
+        id      => $first,
+        message => 'first'
+    }, 'commit';
 
 #use Data::Dumper; say Dumper($payload);
 

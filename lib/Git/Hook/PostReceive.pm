@@ -101,10 +101,12 @@ sub get_commits {
                         }
                         when( m{^merge: (\w+)\s+(\w+)} ) { $info->{merge} = { parent1 => $1 , parent2 => $2 } }
                         default {
+                            $line =~ s/^    //;
                             $info->{message} .= $line . "\n";
                         }
                     }
                 }
+                $info->{message} =~ s/^\n|\n$//g;
                 $info;
             } @commits;
 }
