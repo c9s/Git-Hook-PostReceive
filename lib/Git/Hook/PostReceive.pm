@@ -1,20 +1,23 @@
 package Git::Hook::PostReceive;
 use v5.12;
 use Moose;
-use methods-invoker;
 use DateTime::Format::DateParse;
 use Cwd;
 use File::Basename;
 
 our $VERSION = '0.01';
 
-method read_stdin ($line) {
+sub read_stdin {
+    my ($self, $line) = @_;
+
     chomp $line;
     my @args = split /\s+/, $line;
-    return $->run( @args );
+    return $self->run( @args );
 }
 
-method run ($before, $after, $ref) {
+sub run {
+    my ($self, $before, $after, $ref) = @_;
+
     my $is_new_head = $before =~ /^0{40}/;
     my $is_delete = $after =~ /^0{40}/;
 
@@ -31,7 +34,7 @@ method run ($before, $after, $ref) {
 
     my ($ref_type,$ref_name) = ( $ref =~ m{refs/([^/]+)/([^/]+)} );
     my $repo = getcwd;
-    my @commits = $->get_commits($before,$after);
+    my @commits = $self->get_commits($before,$after);
     return {
         before     => $before,
         after      => $after,
@@ -48,7 +51,9 @@ method run ($before, $after, $ref) {
     };
 }
 
-method get_commits ($before,$after) {
+sub get_commits {
+    my ($self,$before,$after) = @_;
+
     my $log_string;
 
     if( $before && $after ) {
