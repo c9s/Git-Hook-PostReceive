@@ -63,10 +63,10 @@ sub get_commits {
     my $log_string;
 
     if( $before && $after ) {
-        $log_string = qx(git rev-list --pretty $before...$after);
+        $log_string = qx(git rev-list --date=iso --pretty $before...$after);
     }
     elsif( $after ) {
-        $log_string = qx(git rev-list --pretty $after);
+        $log_string = qx(git rev-list --date=iso --pretty $after);
     }
 
     return ( ) unless $log_string;
@@ -94,7 +94,11 @@ sub get_commits {
                                     email => $2
                                 };
                             }
-                        when( m{^date:\s+(.*)$}i ) {  $info->{date} = DateTime::Format::DateParse->parse_datetime( $1 ); }
+                        when( m{^date:\s+(.*)$}i ) {
+                            $info->{timestamp} = $1;
+                            $info->{timestamp} =~ s/ /T/;
+                            $info->{timestamp} =~ s/ ([+-])(\d\d)(\d\d)/$1$2:$3/;
+                        }
                         when( m{^merge: (\w+)\s+(\w+)} ) { $info->{merge} = { parent1 => $1 , parent2 => $2 } }
                         default {
                             $info->{message} .= $line . "\n";

@@ -27,6 +27,11 @@ my $payload = $hook->run('0' x 40, $after, 'master');
 is $payload->{after}, $after, 'after';
 is scalar @{$payload->{commits}}, 2, 'number of commits';
 
+is_deeply $payload->{commits}->[0]->{author},
+    { email => 'a@li.ce', name => 'Alice' }, 'author';
+
+is $payload->{commits}->[0]->{timestamp}, '2013-07-30T08:20:24+02:00', 'timestamp';
+
 #use Data::Dumper; say Dumper($payload);
 
 done_testing;
@@ -37,7 +42,7 @@ echo 1 > foo
 echo 2 > bar
 echo 3 > doz
 git add --all
-git commit --author "Alice <a@li.ce>" -m "first" --quiet
+git commit --author "Alice <a@li.ce>" -m "first" --date "Tue, 30 Jul 2013 08:20:24 +0200" --quiet
 git rm foo --quiet
 echo 4 > bar
 echo 5 > baz
