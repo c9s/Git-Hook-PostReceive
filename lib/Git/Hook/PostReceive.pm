@@ -1,5 +1,5 @@
 package Git::Hook::PostReceive;
-use v5.12;
+use v5.10;
 use DateTime::Format::DateParse;
 use Cwd;
 use File::Basename;
