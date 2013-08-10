@@ -7,6 +7,12 @@ use DateTime::Format::DateParse;
 use Cwd;
 use File::Basename;
 
+sub new {
+    my ($class, %args) = @_;
+    my $self = bless { }, $class;
+    $self;
+}
+
 sub read_stdin {
     my ($self, $line) = @_;
 
