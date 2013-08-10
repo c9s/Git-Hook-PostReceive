@@ -112,27 +112,30 @@ __END__
 
     # hooks/post-receive
     use Git::Hook::PostReceive;
-    my $payload = Git::Hook::PostReceive->new->read_stdin( <STDIN> );
 
-    $payload->{new_head};
-    $payload->{delete};
+    foreach my $line (<STDIN>) {
+        my $payload = Git::Hook::PostReceive->new->read_stdin( $line );
 
-    $payload->{before};
-    $payload->{after};
-    $payload->{ref_type}; # tags or heads
+        $payload->{new_head};
+        $payload->{delete};
 
-    for my $commit (@{ $payload->{commits} } ) {
-        $commit->{id};
-        $commit->{author}->{name};
-        $commit->{author}->{email};
-        $commit->{message};
-        $commit->{date};
+        $payload->{before};
+        $payload->{after};
+        $payload->{ref_type}; # tags or heads
+
+        for my $commit (@{ $payload->{commits} } ) {
+            $commit->{id};
+            $commit->{author}->{name};
+            $commit->{author}->{email};
+            $commit->{message};
+            $commit->{date};
+        }
     }
 
 =head1 DESCRIPTION
 
 Git::Hook::PostReceive parses git commit information in post-receive hook script.
 
-all you need to do is pass the STDIN string to Git::Hook::PostReceive,
-then it returns the commit payload .
+all you need to do is pass each STDIN string to Git::Hook::PostReceive,
+then it returns the commit payload for the particular branch.
 
