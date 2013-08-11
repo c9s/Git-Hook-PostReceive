@@ -29,7 +29,9 @@ my ($second,$first) = split "\n", `git log --format='%H'`;
 my $expect = {
     before  => $null,
     after   => $second,
-#    created => 1,
+    created => 1,
+    deleted => 0,
+    ref => 'master',
     repository => $repo,
     commits => [
         {
@@ -38,22 +40,34 @@ my $expect = {
                 email => 'a@li.ce',
                 name => 'Alice'
             },
+            commiter => {
+                email => 'a@li.ce',
+                name => 'Alice'
+            },
             id => $first,
-            message => 'first'
+            message => 'first',
+            added => [sort qw(foo bar doz)],
+            removed => [],
+            modified => [],
+#           distinct => true,
         },
         {
             id => $second,
             timestamp => '2013-08-10T14:36:06-01:00',
             author => {
-                         'email' => 'a@li.ce',
-                         'name' => 'Alice'
-                       },
-            message => 'second'
+                email => 'a@li.ce',
+                name => 'Alice'
+            },
+            commiter => {
+                email => 'a@li.ce',
+                name => 'Alice'
+            },
+            message => 'second',
+            added   => ['baz'],
+            removed => ['foo'],
+            modified => ['bar']
         }
     ],
-    new_head => 1,
-    ref => undef,
-    ref_type => undef,
 };
 
 my $hook = Git::Hook::PostReceive->new;
@@ -62,7 +76,7 @@ my $payload = $hook->read_stdin("$null $second master\n");
 
 is_deeply $payload, $expect;
 
-# use Data::Dumper; say Dumper($payload);
+use Data::Dumper; say Dumper($payload);
 
 # TODO: test merge, test multiline message
 

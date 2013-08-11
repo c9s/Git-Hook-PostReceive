@@ -23,34 +23,34 @@ sub read_stdin {
 sub run {
     my ($self, $before, $after, $ref) = @_;
 
-    my $is_new_head = $before =~ /^0{40}/;
-    my $is_delete = $after =~ /^0{40}/;
+    my ($created,$deleted) = (0,0);
 
-    $before  = qx(git rev-parse $before)
-        if $before ne '0000000000000000000000000000000000000000';
+    if ($before ne '0000000000000000000000000000000000000000') {
+        $before  = qx(git rev-parse $before);
+        chomp $before;
+    } else {
+        $created = 1;
+    }
 
-    $after  = qx(git rev-parse $after)
-        if $after ne '0000000000000000000000000000000000000000';
+    if ($after ne '0000000000000000000000000000000000000000') {
+        $after  = qx(git rev-parse $after);
+        chomp $after;
+    } else {
+        $deleted = 1;
+    }
 
-    chomp($before) if $before;
-    chomp($after) if $after;
-
-    my ($ref_type,$ref_name) = ( $ref =~ m{refs/([^/]+)/([^/]+)} );
     my $repo = getcwd;
-    my @commits = $self->get_commits($before,$after);
     return {
         before     => $before,
         after      => $after,
         repository => $repo,
-        ref        => $ref_name,
-        ref_type   => $ref_type,
-        ( $is_new_head
-            ? (new_head => $is_new_head)
-            : () ),
-        ( $is_delete
-            ? (delete => $is_delete)
-            : () ),
-        commits    => \@commits,
+        ref        => $ref,
+        created    => $created,
+        deleted    => $deleted,
+        commits    => [
+            $self->get_commits($before,$after)
+        ]
+        # head_commit => ... # ?
     };
 }
 
@@ -60,53 +60,67 @@ sub get_commits {
     my $log_string;
 
     if( $before ne '0000000000000000000000000000000000000000' &&
-        $after ne '0000000000000000000000000000000000000000') {
-        $log_string = qx(git rev-list --date=iso --pretty $before...$after);
+        $after  ne '0000000000000000000000000000000000000000') {
+        $log_string = qx(git rev-list $before...$after);
     }
     elsif( $after ne '0000000000000000000000000000000000000000' ) {
-        $log_string = qx(git rev-list --date=iso --pretty $after);
+        $log_string = qx(git rev-list $after);
     }
 
     return ( ) unless $log_string;
 
-    my @lines = split /\n/,$log_string;
-    my @commits = ();
-    my $buffer = '';
-    for( @lines ) {
-        if(/^commit\s/ && $buffer ) {
-            push @commits,$buffer;
-            $buffer = '';
+    return reverse map { $self->commit_info($_) } split /\n/,$log_string;
+}
+
+sub commit_info {
+    my ($self, $hash) = @_;
+
+    my $commit = qx{git show --format=fuller --date=iso --name-status $hash};
+
+    my @lines = split /\n/, $commit;
+
+    my $info = {
+        added => [],
+        removed => [],
+        modified => []
+    };
+
+    for my $line ( @lines ) {
+        given($line) {
+            when( m{^commit (.*)$}i ) {
+                $info->{id} = $1;
+            }
+            when( m{^author:\s+(.*?)\s<(.*?)>}i ) {
+                $info->{author} = { name  => $1, email => $2 };
+            }
+            when( m{^commit:\s+(.*?)\s<(.*?)>}i ) {
+                $info->{commiter} = { name  => $1, email => $2 };
+            }
+            when( m{^authordate:\s+(.*)$}i ) {
+                $info->{timestamp} = $1;
+                $info->{timestamp} =~ s/ /T/;
+                $info->{timestamp} =~ s/ ([+-])(\d\d)(\d\d)/$1$2:$3/;
+            }
+            when( m{^merge: (\w+)\s+(\w+)}i ) {
+                $info->{merge} = { parent1 => $1 , parent2 => $2 }
+            }
+            when( m{^A\t(.+)}) {
+                push @{$info->{added}}, $1;
+            }
+            when( m{^D\t(.+)}) {
+                push @{$info->{removed}}, $1;
+            }
+            when( m{^M\t(.+)} ) {
+                push @{$info->{modified}}, $1;
+            }
+            when( m{^    (.*)} ) {
+                $info->{message} .= $1."\n";
+            }
         }
-        $buffer .= $_ . "\n";
     }
-    push @commits, $buffer;
-    return reverse map {
-                my @lines = split /\n/,$_;
-                my $info = {  };
-                for my $line ( @lines ) {
-                    given($line) {
-                        when( m{^commit (.*)$}i ) { $info->{id} = $1; }
-                        when( m{^author:\s+(.*?)\s<(.*?)>}i ) {
-                                $info->{author} = {
-                                    name => $1,
-                                    email => $2
-                                };
-                            }
-                        when( m{^date:\s+(.*)$}i ) {
-                            $info->{timestamp} = $1;
-                            $info->{timestamp} =~ s/ /T/;
-                            $info->{timestamp} =~ s/ ([+-])(\d\d)(\d\d)/$1$2:$3/;
-                        }
-                        when( m{^merge: (\w+)\s+(\w+)} ) { $info->{merge} = { parent1 => $1 , parent2 => $2 } }
-                        default {
-                            $line =~ s/^    //;
-                            $info->{message} .= $line . "\n";
-                        }
-                    }
-                }
-                $info->{message} =~ s/^\n|\n$//g;
-                $info;
-            } @commits;
+    chomp $info->{message};
+
+    return $info;
 }
 
 1;
@@ -152,12 +166,15 @@ environment variable.
 =head2 payload format
 
 The payload format returned by method C<read_stdin> or C<run> is compatible with
-L<https://help.github.com/articles/post-receive-hooks|GitHub Post-Receive Hooks>:
+L<https://help.github.com/articles/post-receive-hooks|GitHub Post-Receive Hooks>
+with some minor differences:
 
     {
         before  => $commit_hash_before,
         after   => $commit_hash_after,
-        ref_    => $ref,
+        ref     => $ref,
+        created => $whether_new_branch,      # 1|0 in contrast to true|false
+        deleted => $whether_branch_removed,  # 1|0 in contrast to true|false
         commits => [
             id        => $hash,
             message   => $message,
@@ -169,11 +186,16 @@ L<https://help.github.com/articles/post-receive-hooks|GitHub Post-Receive Hooks>
             commiter  => {
                 email => $email,
                 name  => $name
-            }
+            },
+            added     => [@added_paths],
+            removed   => [@deleted_paths],
+            modified  => [@modified_paths],
         ],
-        repository => $directory,
+        repository => $directory,           # in contrast to detailed object
     }
 
-C<before> is set to <0000000000000000000000000000000000000000> when a new branch
-has been pushed and C<after> is set to this value when a branch has been deleted.
+C<before> is set to <0000000000000000000000000000000000000000> and C<created>
+is set to C<1> (C<0> otherwise) when a new branch has been pushed. C<after> is
+set to <0000000000000000000000000000000000000000> and C<deleted> is set to C<1>
+(C<0> otherwise) when a branch has been deleted.
 
