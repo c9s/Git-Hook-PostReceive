@@ -3,7 +3,6 @@ package Git::Hook::PostReceive;
 #ABSTRACT: Parses git commit information in post-receive hook scripts
 
 use v5.10;
-use DateTime::Format::DateParse;
 use Cwd;
 use File::Basename;
 
@@ -27,13 +26,11 @@ sub run {
     my $is_new_head = $before =~ /^0{40}/;
     my $is_delete = $after =~ /^0{40}/;
 
-    $before  = $before ne '0000000000000000000000000000000000000000'
-                ? qx(git rev-parse $before)
-                : undef;
+    $before  = qx(git rev-parse $before)
+        if $before ne '0000000000000000000000000000000000000000';
 
-    $after   = $after ne '0000000000000000000000000000000000000000'
-                ? qx(git rev-parse $after)
-                : undef;
+    $after  = qx(git rev-parse $after)
+        if $after ne '0000000000000000000000000000000000000000';
 
     chomp($before) if $before;
     chomp($after) if $after;
@@ -62,10 +59,11 @@ sub get_commits {
 
     my $log_string;
 
-    if( $before && $after ) {
+    if( $before ne '0000000000000000000000000000000000000000' &&
+        $after ne '0000000000000000000000000000000000000000') {
         $log_string = qx(git rev-list --date=iso --pretty $before...$after);
     }
-    elsif( $after ) {
+    elsif( $after ne '0000000000000000000000000000000000000000' ) {
         $log_string = qx(git rev-list --date=iso --pretty $after);
     }
 
@@ -142,6 +140,40 @@ __END__
 
 Git::Hook::PostReceive parses git commit information in post-receive hook script.
 
-all you need to do is pass each STDIN string to Git::Hook::PostReceive,
+All you need to do is pass each STDIN string to Git::Hook::PostReceive,
 then it returns the commit payload for the particular branch.
+
+This module does not use any non-core dependencies, so you can also
+copy it to a location of your choice and directly include it.
+
+To run the hook on an arbitrary git repository, set the C<GIT_WORK_TREE>
+environment variable.
+
+=head2 payload format
+
+The payload format returned by method C<read_stdin> or C<run> is compatible with
+L<https://help.github.com/articles/post-receive-hooks|GitHub Post-Receive Hooks>:
+
+    {
+        before  => $commit_hash_before,
+        after   => $commit_hash_after,
+        ref_    => $ref,
+        commits => [
+            id        => $hash,
+            message   => $message,
+            timestamp => $date,
+            author    => {
+                email => $email,
+                name  => $name
+            },
+            commiter  => {
+                email => $email,
+                name  => $name
+            }
+        ],
+        repository => $directory,
+    }
+
+C<before> is set to <0000000000000000000000000000000000000000> when a new branch
+has been pushed and C<after> is set to this value when a branch has been deleted.
 

@@ -3,19 +3,22 @@ use v5.10;
 use Test::More;
 use File::Temp qw(tempdir);
 use Git::Hook::PostReceive;
+use Cwd;
 
 my $gitv = `git --version`; # e.g. "git version 1.8.1.2"
-if ($? != 0) {
+if ($?) {
     plan skip_all => 'git not installed';
     exit;
+} else {
+    diag $gitv;
 }
 
-chomp $gitv;
-diag "using git $gitv for testing";
+my $cwd = cwd;
 
 my $repo = tempdir();
 chdir $repo;
 
+my $null = '0000000000000000000000000000000000000000';
 my @commands = <DATA>;
 foreach (@commands) {
     system($_) && last;
@@ -23,22 +26,45 @@ foreach (@commands) {
 
 my ($second,$first) = split "\n", `git log --format='%H'`;
 
+my $expect = {
+    before  => $null,
+    after   => $second,
+#    created => 1,
+    repository => $repo,
+    commits => [
+        {
+            timestamp => '2013-07-30T08:20:24+02:00',
+            author => {
+                email => 'a@li.ce',
+                name => 'Alice'
+            },
+            id => $first,
+            message => 'first'
+        },
+        {
+            id => $second,
+            timestamp => '2013-08-10T14:36:06-01:00',
+            author => {
+                         'email' => 'a@li.ce',
+                         'name' => 'Alice'
+                       },
+            message => 'second'
+        }
+    ],
+    new_head => 1,
+    ref => undef,
+    ref_type => undef,
+};
+
 my $hook = Git::Hook::PostReceive->new;
 
-my $payload = $hook->run('0' x 40, $second, 'master');
+my $payload = $hook->read_stdin("$null $second master\n");
 
-is $payload->{after}, $second, 'after';
-is scalar @{$payload->{commits}}, 2, 'number of commits';
+is_deeply $payload, $expect;
 
-is_deeply $payload->{commits}->[0],
-    {
-        timestamp => '2013-07-30T08:20:24+02:00',
-        author => { email => 'a@li.ce', name => 'Alice' },
-        id      => $first,
-        message => 'first'
-    }, 'commit';
+# use Data::Dumper; say Dumper($payload);
 
-#use Data::Dumper; say Dumper($payload);
+# TODO: test merge, test multiline message
 
 done_testing;
 
@@ -55,4 +81,4 @@ git rm foo --quiet
 echo 4 > bar
 echo 5 > baz
 git add bar baz
-git commit -m "second" --quiet
+git commit -m "second" --date "1376148966 -01:00" --quiet
