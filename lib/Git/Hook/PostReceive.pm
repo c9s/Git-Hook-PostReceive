@@ -199,3 +199,7 @@ is set to C<1> (C<0> otherwise) when a new branch has been pushed. C<after> is
 set to <0000000000000000000000000000000000000000> and C<deleted> is set to C<1>
 (C<0> otherwise) when a branch has been deleted.
 
+=head2 SEE ALSO
+
+L<Git::Repository>, L<Plack::App::GitHub::WebHook>
+
