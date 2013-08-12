@@ -5,10 +5,13 @@ package Git::Hook::PostReceive;
 use v5.10;
 use Cwd;
 use File::Basename;
+use Encode;
 
 sub new {
     my ($class, %args) = @_;
-    my $self = bless { }, $class;
+    my $self = bless {
+        utf8 => $args{utf8} ? 1 : 0,
+    }, $class;
     $self;
 }
 
@@ -76,6 +79,7 @@ sub commit_info {
     my ($self, $hash) = @_;
 
     my $commit = qx{git show --format=fuller --date=iso --name-status $hash};
+    $commit = decode('utf8',$commit) if $self->{utf8};
 
     my @lines = split /\n/, $commit;
 
@@ -132,7 +136,7 @@ __END__
     use Git::Hook::PostReceive;
 
     foreach my $line (<STDIN>) {
-        my $payload = Git::Hook::PostReceive->new->read_stdin( $line );
+        my $payload = Git::Hook::PostReceive->new( utf8 => 1 )->read_stdin( $line );
 
         $payload->{new_head};
         $payload->{delete};
@@ -198,6 +202,18 @@ C<before> is set to <0000000000000000000000000000000000000000> and C<created>
 is set to C<1> (C<0> otherwise) when a new branch has been pushed. C<after> is
 set to <0000000000000000000000000000000000000000> and C<deleted> is set to C<1>
 (C<0> otherwise) when a branch has been deleted.
+
+=head2 CONFIGURATION
+
+=over 4
+
+=item utf8
+
+Git does not know about character encodings, so the payload will consists of
+raw byte strings by default.  Setting this configuration value to a true value
+will decode all payload fields as UTF8 to get Unicode strings.
+
+=back
 
 =head2 SEE ALSO
 

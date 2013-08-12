@@ -4,6 +4,7 @@ use Test::More;
 use File::Temp qw(tempdir);
 use Git::Hook::PostReceive;
 use Cwd;
+use Text::ParseWords;
 
 my $gitv = `git --version`; # e.g. "git version 1.8.1.2"
 if ($?) {
@@ -23,10 +24,13 @@ my $repo = tempdir();
 chdir $repo;
 
 my $null = '0000000000000000000000000000000000000000';
+
 my @commands = <DATA>;
 foreach (@commands) {
-    s/\\n/\n/g;
-    system($_) && last;
+    chomp; # don't use shell to avoid encoding issues, unless piped command
+    my @args = $_ =~ />/ ? $_ : quotewords('\s+', 0, $_);
+    @args = map { $_=~s/\{([0-9A-Z]+)\}/pack('U',hex($1))/ge; $_ }  @args;
+    system(@args) && last;
 }
 
 my ($second,$first) = split "\n", `git log --format='%H'`;
@@ -67,7 +71,7 @@ my $expect = {
                 email => 'a@li.ce',
                 name => 'Alice'
             },
-            message => "second\n\nmessage",
+            message => "second\n\n\xE2\x98\x83",
             added   => ['baz'],
             removed => ['foo'],
             modified => ['bar']
@@ -75,10 +79,16 @@ my $expect = {
     ],
 };
 
-my $hook = Git::Hook::PostReceive->new;
+$hook = Git::Hook::PostReceive->new;
 
 $payload = $hook->read_stdin("$null $second master\n");
 is_deeply $payload, $expect, 'sample payload';
+
+# encode as utf8 strings
+$hook = Git::Hook::PostReceive->new( utf8 => 1 );
+$payload = $hook->read_stdin("$null $second master\n");
+$expect->{commits}->[1]->{message} = "second\n\n\x{2603}";
+is_deeply $payload, $expect, 'sample payload in UTF8';
 
 # use Data::Dumper; say Dumper($payload);
 
@@ -99,4 +109,4 @@ git rm foo --quiet
 echo 4 > bar
 echo 5 > baz
 git add bar baz
-git commit -m "second\n\nmessage" --date "1376148966 -01:00" --quiet
+git commit -m "second{A}{A}{2603}" --date "1376148966 -01:00" --quiet
