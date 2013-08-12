@@ -17,7 +17,7 @@ sub read_stdin {
 
     chomp $line;
     my @args = split /\s+/, $line;
-    return $self->run( @args );
+    return @args ? $self->run( @args ) : undef;
 }
 
 sub run {

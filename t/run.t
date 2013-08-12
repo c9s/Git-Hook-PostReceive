@@ -13,6 +13,10 @@ if ($?) {
     diag $gitv;
 }
 
+my $hook = Git::Hook::PostReceive->new;
+my $payload = $hook->read_stdin("\n");
+is $payload, undef, "ignore empty lines";
+
 my $cwd = cwd;
 
 my $repo = tempdir();
@@ -21,6 +25,7 @@ chdir $repo;
 my $null = '0000000000000000000000000000000000000000';
 my @commands = <DATA>;
 foreach (@commands) {
+    s/\\n/\n/g;
     system($_) && last;
 }
 
@@ -62,7 +67,7 @@ my $expect = {
                 email => 'a@li.ce',
                 name => 'Alice'
             },
-            message => 'second',
+            message => "second\n\nmessage",
             added   => ['baz'],
             removed => ['foo'],
             modified => ['bar']
@@ -72,13 +77,12 @@ my $expect = {
 
 my $hook = Git::Hook::PostReceive->new;
 
-my $payload = $hook->read_stdin("$null $second master\n");
+$payload = $hook->read_stdin("$null $second master\n");
+is_deeply $payload, $expect, 'sample payload';
 
-is_deeply $payload, $expect;
+# use Data::Dumper; say Dumper($payload);
 
-use Data::Dumper; say Dumper($payload);
-
-# TODO: test merge, test multiline message
+# TODO: test merge
 
 done_testing;
 
@@ -95,4 +99,4 @@ git rm foo --quiet
 echo 4 > bar
 echo 5 > baz
 git add bar baz
-git commit -m "second" --date "1376148966 -01:00" --quiet
+git commit -m "second\n\nmessage" --date "1376148966 -01:00" --quiet
