@@ -1,4 +1,10 @@
 Revision history for Perl extension Git::Hook::PostReceive
 
+0.2    Sun Aug 11 20:37:33 2013
+        - removed non-core dependencies
+        - changed payload format to align with GitHub
+        - extended documentation
+        - added unit tests
+
 0.01    Thu Jun 28 15:49:42 2012
         - original version
