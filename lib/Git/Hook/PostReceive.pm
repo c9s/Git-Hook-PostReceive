@@ -251,4 +251,20 @@ C<$ref>. Returns undef on failure.
 
 L<Git::Repository>, L<Plack::App::GitHub::WebHook>
 
+=head1 CONTRIBUTORS
+
+=over 4
+
+=item *
+
+Jakob Voss <voss@gbv.de>
+
+=item *
+
+Yo-An Lin (林佑安) <cornelius@cpan.org>
+
+=back
+
+=cut
+
 =encoding utf8
