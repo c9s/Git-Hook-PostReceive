@@ -35,6 +35,40 @@ foreach (@commands) {
 
 my ($second,$first) = split "\n", `git log --format='%H'`;
 
+my @commits = ({
+    timestamp => '2013-07-30T08:20:24+02:00',
+    author => {
+        email => 'a@li.ce',
+        name => 'Alice'
+    },
+    commiter => {
+        email => 'a@li.ce',
+        name => 'Alice'
+    },
+    id => $first,
+    message => 'first',
+    added => [sort qw(foo bar doz)],
+    removed => [],
+    modified => [],
+# distinct => true,
+},
+{
+    id => $second,
+    timestamp => '2013-08-10T14:36:06-01:00',
+    author => {
+        email => 'a@li.ce',
+        name => 'Alice'
+    },
+    commiter => {
+        email => 'a@li.ce',
+        name => 'Alice'
+    },
+    message => "second\n\n\xE2\x98\x83",
+    added   => ['baz'],
+    removed => ['foo'],
+    modified => ['bar']
+});
+
 my $expect = {
     before  => $null,
     after   => $second,
@@ -42,56 +76,26 @@ my $expect = {
     deleted => 0,
     ref => 'master',
     repository => $repo,
-    commits => [
-        {
-            timestamp => '2013-07-30T08:20:24+02:00',
-            author => {
-                email => 'a@li.ce',
-                name => 'Alice'
-            },
-            commiter => {
-                email => 'a@li.ce',
-                name => 'Alice'
-            },
-            id => $first,
-            message => 'first',
-            added => [sort qw(foo bar doz)],
-            removed => [],
-            modified => [],
-#           distinct => true,
-        },
-        {
-            id => $second,
-            timestamp => '2013-08-10T14:36:06-01:00',
-            author => {
-                email => 'a@li.ce',
-                name => 'Alice'
-            },
-            commiter => {
-                email => 'a@li.ce',
-                name => 'Alice'
-            },
-            message => "second\n\n\xE2\x98\x83",
-            added   => ['baz'],
-            removed => ['foo'],
-            modified => ['bar']
-        }
-    ],
+    commits => [ @commits ],
 };
 
 $hook = Git::Hook::PostReceive->new;
-
 $payload = $hook->read_stdin("$null $second master\n");
 is_deeply $payload, $expect, 'sample payload';
 
-# encode as utf8 strings
+my @branches = $hook->read_stdin("$null $second master\n","$first mytag mybranch");
+is_deeply @branches[1], { 
+    repository => $repo, ref => 'mybranch',
+    before => $first, after => $second, created => 0, deleted => 0,
+    commits => [$commits[1]]
+}, 'multiple branches';
+
 $hook = Git::Hook::PostReceive->new( utf8 => 1 );
-$payload = $hook->read_stdin("$null $second master\n");
+$payload = $hook->read_stdin("$null mytag master");
 $expect->{commits}->[1]->{message} = "second\n\n\x{2603}";
 is_deeply $payload, $expect, 'sample payload in UTF8';
 
-# use Data::Dumper; say Dumper($payload);
-
+# use Data::Dumper; say Dumper(\@branches);
 # TODO: test merge
 
 done_testing;
@@ -110,3 +114,5 @@ echo 4 > bar
 echo 5 > baz
 git add bar baz
 git commit -m "second{A}{A}{2603}" --date "1376148966 -01:00" --quiet
+git tag mytag
+git checkout -b mybranch --quiet

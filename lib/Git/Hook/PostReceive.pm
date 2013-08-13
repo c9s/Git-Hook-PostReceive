@@ -16,15 +16,28 @@ sub new {
 }
 
 sub read_stdin {
-    my ($self, $line) = @_;
+    my $self  = shift;
+    my @lines = @_ ? map { split "\n" } @_ : <>;
+    my @branches;
 
-    chomp $line;
-    my @args = split /\s+/, $line;
-    return @args ? $self->run( @args ) : undef;
+    foreach my $line (@lines) {
+        chomp $line;
+        my $payload = $self->run( split /\s+/, $line );
+        if ( wantarray ) {
+            push @branches, $payload;
+        } else {
+            return $payload;
+        }
+    }
+
+    return wantarray ? @branches : ();
 }
 
 sub run {
     my ($self, $before, $after, $ref) = @_;
+
+    return unless $before and $after and $ref;
+#    $before //= 
 
     my ($created,$deleted) = (0,0);
 
@@ -135,15 +148,11 @@ __END__
     # hooks/post-receive
     use Git::Hook::PostReceive;
 
-    foreach my $line (<STDIN>) {
-        my $payload = Git::Hook::PostReceive->new( utf8 => 1 )->read_stdin( $line );
-
-        $payload->{new_head};
-        $payload->{delete};
+    my @branches = Git::Hook::PostReceive->new->read_stdin;
+    foreach my $payload (@branches) {
 
         $payload->{before};
         $payload->{after};
-        $payload->{ref_type}; # tags or heads
 
         for my $commit (@{ $payload->{commits} } ) {
             $commit->{id};
@@ -154,6 +163,16 @@ __END__
         }
     }
 
+    # hooks/post-receive to send web hooks like GitHub
+    use Git::Hook::PostReceive 0.2;
+    use LWP::UserAgent;
+    use JSON;
+
+    my $ua = LWP::UserAgent->new;
+    for (Git::Hook::PostReceive->new( utf8 => 1 )->read_stdin) {
+        $ua->post( "http://example.org/webhook", { 'payload' => to_json($_) } );
+    }
+    
 =head1 DESCRIPTION
 
 Git::Hook::PostReceive parses git commit information in post-receive hook script.
@@ -203,7 +222,7 @@ is set to C<1> (C<0> otherwise) when a new branch has been pushed. C<after> is
 set to <0000000000000000000000000000000000000000> and C<deleted> is set to C<1>
 (C<0> otherwise) when a branch has been deleted.
 
-=head2 CONFIGURATION
+=head1 CONFIGURATION
 
 =over 4
 
@@ -214,6 +233,19 @@ raw byte strings by default.  Setting this configuration value to a true value
 will decode all payload fields as UTF8 to get Unicode strings.
 
 =back
+
+=head1 METHODS
+
+=head2 read_stdin( [ @lines ] )
+
+Read one or more lines as passed to a git post-receive hook. One can pass
+arrays of lines or strings that are split by newlines. Lines are read from
+STDIN by default.
+
+=head2 run( $before, $after, $ref )
+
+Return a payload for the commits between C<$before> and C<$after> at branch
+C<$ref>. Returns undef on failure.
 
 =head2 SEE ALSO
 
