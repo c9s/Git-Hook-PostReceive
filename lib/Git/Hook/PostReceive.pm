@@ -261,10 +261,8 @@ Jakob Voss <voss@gbv.de>
 
 =item *
 
-Yo-An Lin (林佑安) <cornelius@cpan.org>
+Yo-An Lin <cornelius@cpan.org>
 
 =back
 
 =cut
-
-=encoding utf8
