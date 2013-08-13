@@ -33,7 +33,7 @@ foreach (@commands) {
     system(@args) && last;
 }
 
-my ($second,$first) = split "\n", `git log --format='%H'`;
+my @hashes = reverse split "\n", `git log --format='%H' --all --date-order`;
 
 my @commits = ({
     timestamp => '2013-07-30T08:20:24+02:00',
@@ -45,7 +45,7 @@ my @commits = ({
         email => 'a@li.ce',
         name => 'Alice'
     },
-    id => $first,
+    id => $hashes[0],
     message => 'first',
     added => [sort qw(foo bar doz)],
     removed => [],
@@ -53,7 +53,7 @@ my @commits = ({
 # distinct => true,
 },
 {
-    id => $second,
+    id => $hashes[1],
     timestamp => '2013-08-10T14:36:06-01:00',
     author => {
         email => 'a@li.ce',
@@ -71,22 +71,22 @@ my @commits = ({
 
 my $expect = {
     before  => $null,
-    after   => $second,
+    after   => $hashes[1],
     created => 1,
     deleted => 0,
     ref => 'master',
     repository => $repo,
-    commits => [ @commits ],
+    commits => [ @commits[0..1] ],
 };
 
 $hook = Git::Hook::PostReceive->new;
-$payload = $hook->read_stdin("$null $second master\n");
+$payload = $hook->read_stdin("$null $hashes[1] master\n");
 is_deeply $payload, $expect, 'sample payload';
 
-my @branches = $hook->read_stdin("$null $second master\n","$first mytag mybranch");
+my @branches = $hook->read_stdin("$null $hashes[1] master\n","$hashes[0] mytag mybranch");
 is_deeply @branches[1], { 
     repository => $repo, ref => 'mybranch',
-    before => $first, after => $second, created => 0, deleted => 0,
+    before => $hashes[0], after => $hashes[1], created => 0, deleted => 0,
     commits => [$commits[1]]
 }, 'multiple branches';
 
@@ -95,8 +95,25 @@ $payload = $hook->read_stdin("$null mytag master");
 $expect->{commits}->[1]->{message} = "second\n\n\x{2603}";
 is_deeply $payload, $expect, 'sample payload in UTF8';
 
-# use Data::Dumper; say Dumper(\@branches);
-# TODO: test merge
+$hook = Git::Hook::PostReceive->new;
+$payload = $hook->read_stdin("$hashes[3] $hashes[4] master");
+
+is_deeply $payload->{commits}->[1]->{merge}, {
+    parent1 => substr( $hashes[3], 0, 7),
+    parent2 => substr( $hashes[2], 0, 7)
+}, 'merge';
+
+$payload = $hook->read_stdin("$hashes[2] $null mybranch");
+
+is_deeply $payload, {
+          created => 0,
+          repository => $repo,
+          before => $hashes[2],
+          after => $null,
+          commits => [],
+          ref => 'mybranch',
+          deleted => 1,
+        }, 'delete';
 
 done_testing;
 
@@ -116,3 +133,10 @@ git add bar baz
 git commit -m "second{A}{A}{2603}" --date "1376148966 -01:00" --quiet
 git tag mytag
 git checkout -b mybranch --quiet
+echo x > baz
+git commit --all -m "third" --date "2013-08-11T12:00:00+00:00" --quiet
+git checkout master --quiet
+echo x > bar
+git commit --all -m "four" --date "2013-08-11T12:10:00+00:00" --quiet
+git merge mybranch -m "merged" --quiet
+git branch -d mybranch --quiet
