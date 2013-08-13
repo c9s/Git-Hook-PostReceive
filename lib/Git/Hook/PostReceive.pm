@@ -251,3 +251,4 @@ C<$ref>. Returns undef on failure.
 
 L<Git::Repository>, L<Plack::App::GitHub::WebHook>
 
+=encoding utf8
