@@ -37,8 +37,8 @@ sub read_stdin {
 sub _git_cmd {
     my $self = shift;
     my @args = qw(git);
-    # push @args, "--git-dir=" . $self->{git_dir} if $self->{git_dir};
-    # push @args, "--work-tree=" . $self->{work_tree} if $self->{work_tree};
+    push @args, "--git-dir=" . $self->{git_dir} if $self->{git_dir};
+    push @args, "--work-tree=" . $self->{work_tree} if $self->{work_tree};
     return @args;
 }
 
@@ -60,7 +60,10 @@ sub detect_action {
     return { pushed => [ $before, $after ] };
 }
 
-sub get_repo_path { 
+sub get_repo_path {
+    my $self = shift;
+    return $self->{git_dir} if $self->{git_dir};
+    return $self->{work_tree} if $self->{work_tree};
     return getcwd();
 }
 
