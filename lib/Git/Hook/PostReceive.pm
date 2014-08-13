@@ -1,8 +1,8 @@
 use strict;
 package Git::Hook::PostReceive;
 #ABSTRACT: Parses git commit information in post-receive hook scripts
-
-use v5.10;
+use v5.14;
+use feature "switch";
 use Cwd;
 use File::Basename;
 use Encode;

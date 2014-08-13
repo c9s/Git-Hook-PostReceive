@@ -1,9 +1,10 @@
 use strict;
-use v5.10;
+use v5.14;
+use feature "switch";
 use Test::More;
 use File::Temp qw(tempdir);
 use Git::Hook::PostReceive;
-use Cwd;
+use Cwd qw(abs_path cwd);
 use Text::ParseWords;
 
 my $gitv = `git --version`; # e.g. "git version 1.8.1.2"
@@ -20,7 +21,7 @@ is $payload, undef, "ignore empty lines";
 
 my $cwd = cwd;
 
-my $repo = tempdir();
+my $repo = abs_path(tempdir());
 chdir $repo;
 
 my $null = '0000000000000000000000000000000000000000';
