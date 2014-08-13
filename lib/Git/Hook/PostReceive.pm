@@ -218,7 +218,7 @@ environment variable.
 =head2 payload format
 
 The payload format returned by method C<read_stdin> or C<run> is compatible with
-L<https://help.github.com/articles/post-receive-hooks|GitHub Post-Receive Hooks>
+L<GitHub Post-Receive Hooks|https://help.github.com/articles/post-receive-hooks>
 with some minor differences:
 
     {
