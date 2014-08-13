@@ -60,7 +60,7 @@ sub detect_action {
     return { pushed => [ $before, $after ] };
 }
 
-sub get_repo_path {
+sub get_repo {
     my $self = shift;
     return $self->{git_dir} if $self->{git_dir};
     return $self->{work_tree} if $self->{work_tree};
@@ -90,7 +90,7 @@ sub run {
     return {
         before     => $before,
         after      => $after,
-        repository => $self->get_repo_path(),
+        repository => $self->get_repo(),
         ref        => $ref,
         created    => $created,
         deleted    => $deleted,
