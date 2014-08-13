@@ -108,10 +108,10 @@ sub get_commits {
 
     if( $before ne '0000000000000000000000000000000000000000' &&
         $after  ne '0000000000000000000000000000000000000000') {
-        $log_string = qx(git rev-list $before...$after);
+        $log_string = qx(@{[ $self->_git_cmd() ]} rev-list $before...$after);
     }
     elsif( $after ne '0000000000000000000000000000000000000000' ) {
-        $log_string = qx(git rev-list $after);
+        $log_string = qx(@{[ $self->_git_cmd() ]} rev-list $after);
     }
 
     return ( ) unless $log_string;
@@ -122,7 +122,7 @@ sub get_commits {
 sub commit_info {
     my ($self, $hash) = @_;
 
-    my $commit = qx{git show --format=fuller --date=iso --name-status $hash};
+    my $commit = qx{@{[ $self->_git_cmd() ]} show --format=fuller --date=iso --name-status $hash};
     $commit = decode('utf8',$commit) if $self->{utf8};
 
     my @lines = split /\n/, $commit;
