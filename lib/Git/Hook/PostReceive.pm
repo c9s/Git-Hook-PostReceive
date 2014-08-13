@@ -30,37 +30,64 @@ sub read_stdin {
             return $payload;
         }
     }
-
     return wantarray ? @branches : ();
+}
+
+
+sub _git_cmd {
+    my $self = shift;
+    my @args = qw(git);
+    # push @args, "--git-dir=" . $self->{git_dir} if $self->{git_dir};
+    # push @args, "--work-tree=" . $self->{work_tree} if $self->{work_tree};
+    return @args;
+}
+
+
+sub detect_action {
+    my ($self, $before, $after) = @_;
+    chomp $before;
+    chomp $after;
+    if ($before ne '0000000000000000000000000000000000000000') {
+        $before  = qx(@{[ $self->_git_cmd() ]} rev-parse $before);
+    } else {
+        return { created => $before };
+    }
+    if ($after ne '0000000000000000000000000000000000000000') {
+        $after  = qx(@{[ $self->_git_cmd() ]} rev-parse $after);
+    } else {
+        return { deleted => $after };
+    }
+    return { pushed => [ $before, $after ] };
+}
+
+sub get_repo_path { 
+    return getcwd();
 }
 
 sub run {
     my ($self, $before, $after, $ref) = @_;
 
     return unless $before and $after and $ref;
-#    $before //= 
 
     my ($created,$deleted) = (0,0);
-
     if ($before ne '0000000000000000000000000000000000000000') {
-        $before  = qx(git rev-parse $before);
+        $before  = qx(@{[ $self->_git_cmd() ]} rev-parse $before);
         chomp $before;
     } else {
         $created = 1;
     }
 
     if ($after ne '0000000000000000000000000000000000000000') {
-        $after  = qx(git rev-parse $after);
+        $after  = qx(@{[ $self->_git_cmd() ]} rev-parse $after);
         chomp $after;
     } else {
         $deleted = 1;
     }
 
-    my $repo = getcwd;
     return {
         before     => $before,
         after      => $after,
-        repository => $repo,
+        repository => $self->get_repo_path(),
         ref        => $ref,
         created    => $created,
         deleted    => $deleted,
@@ -245,6 +272,19 @@ STDIN by default.
 
 Return a payload for the commits between C<$before> and C<$after> at branch
 C<$ref>. Returns undef on failure.
+
+=head2 detect_action($before, $after)
+
+This function detects the action of the receiving commits and return the action
+name with the related commit hash in a hashref.
+
+C<0000000000> at the head means "branch created".
+
+C<0000000000> at the end means "branch deleted".
+
+Otherwise it means "commits pushed".
+
+
 
 =head2 SEE ALSO
 
