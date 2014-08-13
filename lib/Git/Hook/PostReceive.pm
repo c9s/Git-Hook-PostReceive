@@ -1,8 +1,9 @@
-use strict;
 package Git::Hook::PostReceive;
-#ABSTRACT: Parses git commit information in post-receive hook scripts
+use warnings;
+use strict;
 use v5.14;
 use feature "switch";
+#ABSTRACT: Parses git commit information in post-receive hook scripts
 use Cwd;
 use File::Basename;
 use Encode;
@@ -103,40 +104,38 @@ sub commit_info {
     };
 
     for my $line ( @lines ) {
-        given($line) {
-            when( m{^commit (.*)$}i ) {
-                $info->{id} = $1;
-            }
-            when( m{^author:\s+(.*?)\s<(.*?)>}i ) {
-                $info->{author} = { name  => $1, email => $2 };
-            }
-            when( m{^commit:\s+(.*?)\s<(.*?)>}i ) {
-                $info->{commiter} = { name  => $1, email => $2 };
-            }
-            when( m{^authordate:\s+(.*)$}i ) {
-                $info->{timestamp} = $1;
-                $info->{timestamp} =~ s/ /T/;
-                $info->{timestamp} =~ s/ ([+-])(\d\d)(\d\d)/$1$2:$3/;
-            }
-            when( m{^merge: (\w+)\s+(\w+)}i ) {
-                $info->{merge} = { parent1 => $1 , parent2 => $2 }
-            }
-            when( m{^A\t(.+)}) {
-                push @{$info->{added}}, $1;
-            }
-            when( m{^D\t(.+)}) {
-                push @{$info->{removed}}, $1;
-            }
-            when( m{^M\t(.+)} ) {
-                push @{$info->{modified}}, $1;
-            }
-            when( m{^    (.*)} ) {
-                $info->{message} .= $1."\n";
-            }
+        $_ = $line;
+        if( m{^commit (.*)$}i ) {
+            $info->{id} = $1;
+        }
+        elsif( m{^author:\s+(.*?)\s<(.*?)>}i ) {
+            $info->{author} = { name  => $1, email => $2 };
+        }
+        elsif( m{^commit:\s+(.*?)\s<(.*?)>}i ) {
+            $info->{commiter} = { name  => $1, email => $2 };
+        }
+        elsif( m{^authordate:\s+(.*)$}i ) {
+            $info->{timestamp} = $1;
+            $info->{timestamp} =~ s/ /T/;
+            $info->{timestamp} =~ s/ ([+-])(\d\d)(\d\d)/$1$2:$3/;
+        }
+        elsif( m{^merge: (\w+)\s+(\w+)}i ) {
+            $info->{merge} = { parent1 => $1 , parent2 => $2 }
+        }
+        elsif( m{^A\t(.+)}) {
+            push @{$info->{added}}, $1;
+        }
+        elsif( m{^D\t(.+)}) {
+            push @{$info->{removed}}, $1;
+        }
+        elsif( m{^M\t(.+)} ) {
+            push @{$info->{modified}}, $1;
+        }
+        elsif( m{^    (.*)} ) {
+            $info->{message} .= $1."\n";
         }
     }
     chomp $info->{message};
-
     return $info;
 }
 

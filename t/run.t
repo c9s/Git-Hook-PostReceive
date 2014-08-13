@@ -1,6 +1,6 @@
 use strict;
+use warnings;
 use v5.14;
-use feature "switch";
 use Test::More;
 use File::Temp qw(tempdir);
 use Git::Hook::PostReceive;
@@ -85,7 +85,7 @@ $payload = $hook->read_stdin("$null $hashes[1] master\n");
 is_deeply $payload, $expect, 'sample payload';
 
 my @branches = $hook->read_stdin("$null $hashes[1] master\n","$hashes[0] mytag mybranch");
-is_deeply @branches[1], { 
+is_deeply $branches[1], { 
     repository => $repo, ref => 'mybranch',
     before => $hashes[0], after => $hashes[1], created => 0, deleted => 0,
     commits => [$commits[1]]
